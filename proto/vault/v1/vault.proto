@@ -1,0 +1,742 @@
+syntax = "proto3";
+
+package vault.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/Neph-dev/nef-vault/gen/proto/vault/v1;vaultv1";
+
+// VaultService provides secure secret management operations.
+// All operations require valid authentication except for initial authentication.
+service VaultService {
+  // Authentication operations
+  
+  // Authenticate establishes a session using master passphrase
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+  
+  // RefreshToken extends an existing session with a new token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  
+  // Revoke invalidates a session token
+  rpc RevokeToken(RevokeTokenRequest) returns (google.protobuf.Empty);
+  
+  // Secret management operations
+  
+  // CreateSecret stores a new secret in the vault
+  rpc CreateSecret(CreateSecretRequest) returns (CreateSecretResponse);
+  
+  // GetSecret retrieves a specific secret by name/ID
+  rpc GetSecret(GetSecretRequest) returns (GetSecretResponse);
+  
+  // UpdateSecret modifies an existing secret
+  rpc UpdateSecret(UpdateSecretRequest) returns (UpdateSecretResponse);
+  
+  // DeleteSecret removes a secret from the vault
+  rpc DeleteSecret(DeleteSecretRequest) returns (google.protobuf.Empty);
+  
+  // ListSecrets returns metadata for secrets matching criteria
+  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
+  
+  // Search operations
+  
+  // SearchSecrets performs full-text search on secret metadata
+  rpc SearchSecrets(SearchSecretsRequest) returns (SearchSecretsResponse);
+  
+  // Vault management operations
+  
+  // GetVaultInfo returns vault status and configuration
+  rpc GetVaultInfo(google.protobuf.Empty) returns (GetVaultInfoResponse);
+  
+  // ChangePassphrase updates the master passphrase
+  rpc ChangePassphrase(ChangePassphraseRequest) returns (google.protobuf.Empty);
+  
+  // Audit and monitoring operations
+  
+  // GetAuditLog retrieves audit entries for security monitoring
+  rpc GetAuditLog(GetAuditLogRequest) returns (GetAuditLogResponse);
+  
+  // Health check
+  
+  // Health returns the health status of the vault service
+  rpc Health(google.protobuf.Empty) returns (HealthResponse);
+}
+
+// Secret represents an encrypted secret stored in the vault.
+// All sensitive data is encrypted and only metadata is stored in plaintext.
+message Secret {
+  // Unique identifier for the secret
+  string id = 1;
+  
+  // Human-readable name for the secret
+  string name = 2;
+  
+  // Encrypted secret data (encrypted with per-secret key)
+  bytes encrypted_data = 3;
+  
+  // Encrypted data key (encrypted with master key using KEK pattern)
+  bytes encrypted_data_key = 4;
+  
+  // Metadata for the secret (searchable, not encrypted)
+  SecretMetadata metadata = 5;
+  
+  // Security and access control
+  SecretScope scope = 6;
+  
+  // Expiration configuration
+  optional google.protobuf.Timestamp expires_at = 7;
+  
+  // Audit information
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  string created_by = 10; // Device ID or user identifier
+  string updated_by = 11;
+  
+  // Version for optimistic locking
+  int64 version = 12;
+  
+  // Encryption version for future compatibility
+  uint32 encryption_version = 13;
+}
+
+// SecretMetadata contains searchable metadata about a secret.
+// This data is stored in plaintext for search and filtering.
+message SecretMetadata {
+  // Category or type of secret (e.g., "api_key", "password", "certificate")
+  string category = 1;
+  
+  // Tags for organization and search
+  repeated string tags = 2;
+  
+  // Description of the secret
+  string description = 3;
+  
+  // URL or service associated with the secret
+  string url = 4;
+  
+  // Username or account identifier (if applicable)
+  string username = 5;
+  
+  // Additional custom fields for metadata
+  map<string, string> custom_fields = 6;
+  
+  // Importance level for prioritization
+  ImportanceLevel importance = 7;
+}
+
+// SecretScope defines the access scope and visibility of a secret.
+message SecretScope {
+  // Visibility level
+  ScopeLevel level = 1;
+  
+  // Device restrictions (empty = accessible from all devices)
+  repeated string allowed_devices = 2;
+  
+  // Time-based access restrictions
+  optional TimeRestriction time_restriction = 3;
+  
+  // Usage limitations
+  optional UsageRestriction usage_restriction = 4;
+}
+
+// TimeRestriction defines when a secret can be accessed.
+message TimeRestriction {
+  // Time ranges when access is allowed
+  repeated TimeRange allowed_ranges = 1;
+  
+  // Timezone for time calculations
+  string timezone = 2;
+}
+
+// TimeRange represents a time window for access.
+message TimeRange {
+  // Start time (format: "15:04" for daily, or full timestamp for one-time)
+  string start_time = 1;
+  
+  // End time
+  string end_time = 2;
+  
+  // Days of week when this range applies (1=Monday, 7=Sunday)
+  repeated int32 days_of_week = 3;
+}
+
+// UsageRestriction limits how often a secret can be accessed.
+message UsageRestriction {
+  // Maximum number of accesses per time period
+  int32 max_access_count = 1;
+  
+  // Time period for the access limit
+  google.protobuf.Duration time_period = 2;
+  
+  // Current access count (reset each period)
+  int32 current_access_count = 3;
+  
+  // When the current period started
+  google.protobuf.Timestamp period_start = 4;
+}
+
+// Authentication request using master passphrase.
+message AuthenticateRequest {
+  // Master passphrase for vault access
+  string passphrase = 1;
+  
+  // Device identifier for tracking and restrictions
+  string device_id = 2;
+  
+  // Device metadata for audit logging
+  DeviceInfo device_info = 3;
+  
+  // Requested token lifetime (server may impose limits)
+  optional google.protobuf.Duration token_lifetime = 4;
+}
+
+// Authentication response with session token.
+message AuthenticateResponse {
+  // Signed authentication token for subsequent requests
+  string token = 1;
+  
+  // When the token expires
+  google.protobuf.Timestamp expires_at = 2;
+  
+  // Refresh token for extending the session
+  string refresh_token = 3;
+  
+  // Server capabilities and configuration
+  ServerCapabilities capabilities = 4;
+}
+
+// Token refresh request.
+message RefreshTokenRequest {
+  // Current refresh token
+  string refresh_token = 1;
+  
+  // Device ID for validation
+  string device_id = 2;
+}
+
+// Token refresh response.
+message RefreshTokenResponse {
+  // New authentication token
+  string token = 1;
+  
+  // New expiration time
+  google.protobuf.Timestamp expires_at = 2;
+  
+  // New refresh token
+  string refresh_token = 3;
+}
+
+// Token revocation request.
+message RevokeTokenRequest {
+  // Token to revoke (optional, defaults to current token)
+  optional string token = 1;
+  
+  // Revoke all tokens for this device
+  bool revoke_all_device_tokens = 2;
+}
+
+// Device information for audit and security.
+message DeviceInfo {
+  // Device name or identifier
+  string name = 1;
+  
+  // Operating system
+  string os = 2;
+  
+  // Application version
+  string app_version = 3;
+  
+  // IP address (filled by server)
+  string ip_address = 4;
+  
+  // User agent or client identifier
+  string user_agent = 5;
+}
+
+// Server capabilities and configuration.
+message ServerCapabilities {
+  // Maximum token lifetime
+  google.protobuf.Duration max_token_lifetime = 1;
+  
+  // Maximum secret size in bytes
+  int64 max_secret_size = 2;
+  
+  // Supported encryption versions
+  repeated uint32 supported_encryption_versions = 3;
+  
+  // Maximum number of secrets
+  int64 max_secrets = 4;
+  
+  // Whether audit logging is enabled
+  bool audit_enabled = 5;
+}
+
+// Create secret request.
+message CreateSecretRequest {
+  // Secret to create (ID will be generated if not provided)
+  Secret secret = 1;
+  
+  // Whether to overwrite if secret with same name exists
+  bool overwrite = 2;
+}
+
+// Create secret response.
+message CreateSecretResponse {
+  // Created secret with generated ID and timestamps
+  Secret secret = 1;
+}
+
+// Get secret request.
+message GetSecretRequest {
+  // Secret ID or name
+  string identifier = 1;
+  
+  // Whether to include the decrypted secret data
+  bool include_data = 2;
+  
+  // Record this access in audit log
+  bool audit_access = 3;
+}
+
+// Get secret response.
+message GetSecretResponse {
+  // The requested secret
+  Secret secret = 1;
+  
+  // Decrypted secret data (only if include_data was true)
+  optional bytes decrypted_data = 2;
+}
+
+// Update secret request.
+message UpdateSecretRequest {
+  // Updated secret data
+  Secret secret = 1;
+  
+  // Fields to update (if empty, update all fields)
+  repeated string update_mask = 2;
+  
+  // Expected version for optimistic locking
+  int64 expected_version = 3;
+}
+
+// Update secret response.
+message UpdateSecretResponse {
+  // Updated secret
+  Secret secret = 1;
+}
+
+// Delete secret request.
+message DeleteSecretRequest {
+  // Secret ID to delete
+  string id = 1;
+  
+  // Expected version for optimistic locking
+  optional int64 expected_version = 2;
+  
+  // Confirm deletion of important secrets
+  bool confirm_deletion = 3;
+}
+
+// List secrets request with filtering and pagination.
+message ListSecretsRequest {
+  // Pagination
+  int32 page_size = 1;
+  string page_token = 2;
+  
+  // Filtering
+  SecretFilter filter = 3;
+  
+  // Sorting
+  repeated SortField sort_fields = 4;
+  
+  // Whether to include secret data (expensive)
+  bool include_data = 5;
+}
+
+// List secrets response.
+message ListSecretsResponse {
+  // Secrets matching the request criteria
+  repeated Secret secrets = 1;
+  
+  // Token for next page (empty if no more results)
+  string next_page_token = 2;
+  
+  // Total count of matching secrets (if requested)
+  optional int64 total_count = 3;
+}
+
+// Secret filtering criteria.
+message SecretFilter {
+  // Filter by category
+  repeated string categories = 1;
+  
+  // Filter by tags (any of these tags)
+  repeated string tags = 2;
+  
+  // Filter by name pattern (supports wildcards)
+  string name_pattern = 3;
+  
+  // Filter by creation time range
+  optional FilterTimeRange created_range = 4;
+  
+  // Filter by expiration status
+  ExpirationFilter expiration_filter = 5;
+  
+  // Filter by importance level
+  repeated ImportanceLevel importance_levels = 6;
+  
+  // Filter by scope level
+  repeated ScopeLevel scope_levels = 7;
+}
+
+// Time range for filtering.
+message FilterTimeRange {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Timestamp end = 2;
+}
+
+// Sort field specification.
+message SortField {
+  // Field to sort by
+  string field = 1;
+  
+  // Sort direction
+  SortDirection direction = 2;
+}
+
+// Search secrets request.
+message SearchSecretsRequest {
+  // Search query (searches name, description, tags, custom fields)
+  string query = 1;
+  
+  // Pagination
+  int32 page_size = 2;
+  string page_token = 3;
+  
+  // Additional filters to apply after search
+  SecretFilter filter = 4;
+}
+
+// Search secrets response.
+message SearchSecretsResponse {
+  // Matching secrets with relevance scores
+  repeated SearchResult results = 1;
+  
+  // Token for next page
+  string next_page_token = 2;
+  
+  // Total count of results
+  int64 total_count = 3;
+}
+
+// Search result with relevance scoring.
+message SearchResult {
+  // The matching secret
+  Secret secret = 1;
+  
+  // Relevance score (0.0 to 1.0)
+  float relevance_score = 2;
+  
+  // Highlighted fields showing matches
+  map<string, string> highlights = 3;
+}
+
+// Vault information response.
+message GetVaultInfoResponse {
+  // Vault statistics
+  VaultStats stats = 1;
+  
+  // Security status
+  SecurityStatus security = 2;
+  
+  // Configuration
+  VaultConfig config = 3;
+}
+
+// Vault statistics.
+message VaultStats {
+  // Total number of secrets
+  int64 total_secrets = 1;
+  
+  // Secrets by category
+  map<string, int64> secrets_by_category = 2;
+  
+  // Storage usage in bytes
+  int64 storage_used = 3;
+  
+  // Last access time
+  google.protobuf.Timestamp last_access = 4;
+  
+  // Creation time of vault
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// Security status information.
+message SecurityStatus {
+  // Whether the vault is locked
+  bool is_locked = 1;
+  
+  // Number of active sessions
+  int32 active_sessions = 2;
+  
+  // Last password change
+  google.protobuf.Timestamp last_password_change = 3;
+  
+  // Security events count
+  map<string, int64> security_events = 4;
+  
+  // Backup status
+  BackupStatus backup_status = 5;
+}
+
+// Backup status information.
+message BackupStatus {
+  // Whether backups are enabled
+  bool enabled = 1;
+  
+  // Last backup time
+  google.protobuf.Timestamp last_backup = 2;
+  
+  // Backup location/method
+  string backup_location = 3;
+  
+  // Number of backup files
+  int32 backup_count = 4;
+}
+
+// Vault configuration.
+message VaultConfig {
+  // Encryption settings
+  EncryptionConfig encryption = 1;
+  
+  // Authentication settings
+  AuthConfig auth = 2;
+  
+  // Audit settings
+  AuditConfig audit = 3;
+  
+  // Storage settings
+  StorageConfig storage = 4;
+}
+
+// Encryption configuration.
+message EncryptionConfig {
+  // Current encryption version
+  uint32 current_version = 1;
+  
+  // KDF parameters
+  KDFConfig kdf = 2;
+  
+  // Supported algorithms
+  repeated string algorithms = 3;
+}
+
+// KDF configuration.
+message KDFConfig {
+  // Argon2 time parameter
+  uint32 time_cost = 1;
+  
+  // Argon2 memory parameter (KB)
+  uint32 memory_cost = 2;
+  
+  // Argon2 parallelism parameter
+  uint32 parallelism = 3;
+  
+  // Key length
+  uint32 key_length = 4;
+  
+  // Salt length
+  uint32 salt_length = 5;
+}
+
+// Authentication configuration.
+message AuthConfig {
+  // Token lifetime
+  google.protobuf.Duration token_lifetime = 1;
+  
+  // Refresh token lifetime
+  google.protobuf.Duration refresh_token_lifetime = 2;
+  
+  // Maximum concurrent sessions
+  int32 max_sessions = 3;
+  
+  // Device registration required
+  bool require_device_registration = 4;
+}
+
+// Audit configuration.
+message AuditConfig {
+  // Whether audit logging is enabled
+  bool enabled = 1;
+  
+  // Log retention period
+  google.protobuf.Duration retention_period = 2;
+  
+  // Events to log
+  repeated string logged_events = 3;
+}
+
+// Storage configuration.
+message StorageConfig {
+  // Storage backend type
+  string backend = 1;
+  
+  // Storage location
+  string location = 2;
+  
+  // Encryption at rest
+  bool encrypt_at_rest = 3;
+  
+  // Compression enabled
+  bool compression_enabled = 4;
+}
+
+// Change passphrase request.
+message ChangePassphraseRequest {
+  // Current passphrase for verification
+  string current_passphrase = 1;
+  
+  // New passphrase
+  string new_passphrase = 2;
+  
+  // Whether to re-encrypt all secrets with new master key
+  bool re_encrypt_secrets = 3;
+}
+
+// Audit log request.
+message GetAuditLogRequest {
+  // Time range for audit entries
+  optional FilterTimeRange time_range = 1;
+  
+  // Filter by event types
+  repeated string event_types = 2;
+  
+  // Filter by device ID
+  optional string device_id = 3;
+  
+  // Filter by user/session
+  optional string user_id = 4;
+  
+  // Pagination
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+// Audit log response.
+message GetAuditLogResponse {
+  // Audit log entries
+  repeated AuditEntry entries = 1;
+  
+  // Next page token
+  string next_page_token = 2;
+  
+  // Total count of entries
+  int64 total_count = 3;
+}
+
+// Audit log entry.
+message AuditEntry {
+  // Unique entry ID
+  string id = 1;
+  
+  // Timestamp of the event
+  google.protobuf.Timestamp timestamp = 2;
+  
+  // Event type (e.g., "secret_accessed", "auth_failed")
+  string event_type = 3;
+  
+  // User or device that performed the action
+  string actor = 4;
+  
+  // Resource that was acted upon
+  string resource = 5;
+  
+  // Action that was performed
+  string action = 6;
+  
+  // Result of the action (success, failure, etc.)
+  string result = 7;
+  
+  // Additional event details
+  map<string, string> details = 8;
+  
+  // IP address of the client
+  string ip_address = 9;
+  
+  // User agent of the client
+  string user_agent = 10;
+  
+  // Session ID
+  string session_id = 11;
+}
+
+// Health check response.
+message HealthResponse {
+  // Overall health status
+  HealthStatus status = 1;
+  
+  // Component health checks
+  map<string, ComponentHealth> components = 2;
+  
+  // Server version
+  string version = 3;
+  
+  // Uptime
+  google.protobuf.Duration uptime = 4;
+}
+
+// Component health information.
+message ComponentHealth {
+  // Component status
+  HealthStatus status = 1;
+  
+  // Status message
+  string message = 2;
+  
+  // Last check time
+  google.protobuf.Timestamp last_check = 3;
+}
+
+// Enumeration definitions
+
+// Importance level for secrets.
+enum ImportanceLevel {
+  IMPORTANCE_LEVEL_UNSPECIFIED = 0;
+  IMPORTANCE_LEVEL_LOW = 1;
+  IMPORTANCE_LEVEL_MEDIUM = 2;
+  IMPORTANCE_LEVEL_HIGH = 3;
+  IMPORTANCE_LEVEL_CRITICAL = 4;
+}
+
+// Secret scope levels.
+enum ScopeLevel {
+  SCOPE_LEVEL_UNSPECIFIED = 0;
+  SCOPE_LEVEL_PRIVATE = 1;      // Only this device
+  SCOPE_LEVEL_DEVICE_GROUP = 2; // Specific device group
+  SCOPE_LEVEL_ALL_DEVICES = 3;  // All authorized devices
+}
+
+// Expiration filter options.
+enum ExpirationFilter {
+  EXPIRATION_FILTER_UNSPECIFIED = 0;
+  EXPIRATION_FILTER_ALL = 1;           // All secrets
+  EXPIRATION_FILTER_EXPIRED = 2;       // Only expired secrets
+  EXPIRATION_FILTER_EXPIRING_SOON = 3; // Expiring within configured threshold
+  EXPIRATION_FILTER_NO_EXPIRATION = 4; // Secrets without expiration
+}
+
+// Sort direction.
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+// Health status.
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+}
