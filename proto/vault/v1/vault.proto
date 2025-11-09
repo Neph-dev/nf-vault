@@ -279,6 +279,9 @@ message CreateSecretRequest {
   
   // Whether to overwrite if secret with same name exists
   bool overwrite = 2;
+  
+  // Plaintext secret data to encrypt and store
+  optional bytes plaintext_data = 3;
 }
 
 // Create secret response.
@@ -318,6 +321,9 @@ message UpdateSecretRequest {
   
   // Expected version for optimistic locking
   int64 expected_version = 3;
+  
+  // Plaintext secret data to encrypt and store (if updating data)
+  optional bytes plaintext_data = 4;
 }
 
 // Update secret response.

@@ -1300,7 +1300,9 @@ type CreateSecretRequest struct {
 	// Secret to create (ID will be generated if not provided)
 	Secret *Secret `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
 	// Whether to overwrite if secret with same name exists
-	Overwrite     bool `protobuf:"varint,2,opt,name=overwrite,proto3" json:"overwrite,omitempty"`
+	Overwrite bool `protobuf:"varint,2,opt,name=overwrite,proto3" json:"overwrite,omitempty"`
+	// Plaintext secret data to encrypt and store
+	PlaintextData []byte `protobuf:"bytes,3,opt,name=plaintext_data,json=plaintextData,proto3,oneof" json:"plaintext_data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1347,6 +1349,13 @@ func (x *CreateSecretRequest) GetOverwrite() bool {
 		return x.Overwrite
 	}
 	return false
+}
+
+func (x *CreateSecretRequest) GetPlaintextData() []byte {
+	if x != nil {
+		return x.PlaintextData
+	}
+	return nil
 }
 
 // Create secret response.
@@ -1523,8 +1532,10 @@ type UpdateSecretRequest struct {
 	UpdateMask []string `protobuf:"bytes,2,rep,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	// Expected version for optimistic locking
 	ExpectedVersion int64 `protobuf:"varint,3,opt,name=expected_version,json=expectedVersion,proto3" json:"expected_version,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Plaintext secret data to encrypt and store (if updating data)
+	PlaintextData []byte `protobuf:"bytes,4,opt,name=plaintext_data,json=plaintextData,proto3,oneof" json:"plaintext_data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateSecretRequest) Reset() {
@@ -1576,6 +1587,13 @@ func (x *UpdateSecretRequest) GetExpectedVersion() int64 {
 		return x.ExpectedVersion
 	}
 	return 0
+}
+
+func (x *UpdateSecretRequest) GetPlaintextData() []byte {
+	if x != nil {
+		return x.PlaintextData
+	}
+	return nil
 }
 
 // Update secret response.
@@ -3566,10 +3584,12 @@ const file_vault_v1_vault_proto_rawDesc = "" +
 	"\x1dsupported_encryption_versions\x18\x03 \x03(\rR\x1bsupportedEncryptionVersions\x12\x1f\n" +
 	"\vmax_secrets\x18\x04 \x01(\x03R\n" +
 	"maxSecrets\x12#\n" +
-	"\raudit_enabled\x18\x05 \x01(\bR\fauditEnabled\"]\n" +
+	"\raudit_enabled\x18\x05 \x01(\bR\fauditEnabled\"\x9c\x01\n" +
 	"\x13CreateSecretRequest\x12(\n" +
 	"\x06secret\x18\x01 \x01(\v2\x10.vault.v1.SecretR\x06secret\x12\x1c\n" +
-	"\toverwrite\x18\x02 \x01(\bR\toverwrite\"@\n" +
+	"\toverwrite\x18\x02 \x01(\bR\toverwrite\x12*\n" +
+	"\x0eplaintext_data\x18\x03 \x01(\fH\x00R\rplaintextData\x88\x01\x01B\x11\n" +
+	"\x0f_plaintext_data\"@\n" +
 	"\x14CreateSecretResponse\x12(\n" +
 	"\x06secret\x18\x01 \x01(\v2\x10.vault.v1.SecretR\x06secret\"x\n" +
 	"\x10GetSecretRequest\x12\x1e\n" +
@@ -3581,12 +3601,14 @@ const file_vault_v1_vault_proto_rawDesc = "" +
 	"\x11GetSecretResponse\x12(\n" +
 	"\x06secret\x18\x01 \x01(\v2\x10.vault.v1.SecretR\x06secret\x12*\n" +
 	"\x0edecrypted_data\x18\x02 \x01(\fH\x00R\rdecryptedData\x88\x01\x01B\x11\n" +
-	"\x0f_decrypted_data\"\x8b\x01\n" +
+	"\x0f_decrypted_data\"\xca\x01\n" +
 	"\x13UpdateSecretRequest\x12(\n" +
 	"\x06secret\x18\x01 \x01(\v2\x10.vault.v1.SecretR\x06secret\x12\x1f\n" +
 	"\vupdate_mask\x18\x02 \x03(\tR\n" +
 	"updateMask\x12)\n" +
-	"\x10expected_version\x18\x03 \x01(\x03R\x0fexpectedVersion\"@\n" +
+	"\x10expected_version\x18\x03 \x01(\x03R\x0fexpectedVersion\x12*\n" +
+	"\x0eplaintext_data\x18\x04 \x01(\fH\x00R\rplaintextData\x88\x01\x01B\x11\n" +
+	"\x0f_plaintext_data\"@\n" +
 	"\x14UpdateSecretResponse\x12(\n" +
 	"\x06secret\x18\x01 \x01(\v2\x10.vault.v1.SecretR\x06secret\"\x95\x01\n" +
 	"\x13DeleteSecretRequest\x12\x0e\n" +
@@ -3998,7 +4020,9 @@ func file_vault_v1_vault_proto_init() {
 	file_vault_v1_vault_proto_msgTypes[2].OneofWrappers = []any{}
 	file_vault_v1_vault_proto_msgTypes[6].OneofWrappers = []any{}
 	file_vault_v1_vault_proto_msgTypes[10].OneofWrappers = []any{}
+	file_vault_v1_vault_proto_msgTypes[13].OneofWrappers = []any{}
 	file_vault_v1_vault_proto_msgTypes[16].OneofWrappers = []any{}
+	file_vault_v1_vault_proto_msgTypes[17].OneofWrappers = []any{}
 	file_vault_v1_vault_proto_msgTypes[19].OneofWrappers = []any{}
 	file_vault_v1_vault_proto_msgTypes[21].OneofWrappers = []any{}
 	file_vault_v1_vault_proto_msgTypes[22].OneofWrappers = []any{}
