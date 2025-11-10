@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -54,7 +55,7 @@ func (c *ClipboardManager) setClipboard(content string) error {
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 
-	cmd.Stdin = &contentReader{content: content}
+	cmd.Stdin = strings.NewReader(content)
 	return cmd.Run()
 }
 
@@ -70,22 +71,6 @@ func (c *ClipboardManager) autoClear() {
 		// Log error but don't fail the application
 		fmt.Printf("Warning: failed to auto-clear clipboard: %v\n", err)
 	}
-}
-
-// contentReader implements io.Reader for string content
-type contentReader struct {
-	content string
-	pos     int
-}
-
-func (r *contentReader) Read(p []byte) (n int, err error) {
-	if r.pos >= len(r.content) {
-		return 0, nil // EOF
-	}
-	
-	n = copy(p, r.content[r.pos:])
-	r.pos += n
-	return n, nil
 }
 
 // IsClipboardAvailable checks if clipboard functionality is available
