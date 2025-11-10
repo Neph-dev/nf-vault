@@ -408,4 +408,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ for system administrators who need secure, local secret management.**
+**Made with ❤️ for system administrators who need secure, local secret management. Neph!**
