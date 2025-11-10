@@ -24,6 +24,7 @@ import (
 
 	vault "github.com/Neph-dev/nef-vault/gen/vault/v1"
 	"github.com/Neph-dev/nef-vault/internal/server"
+	"github.com/Neph-dev/nef-vault/pkg/crypto"
 	"github.com/Neph-dev/nef-vault/pkg/store"
 )
 
@@ -150,9 +151,9 @@ func initializeStore(config *Config) (store.Store, error) {
 			return nil, fmt.Errorf("failed to create data directory: %w", err)
 		}
 		
-		// For SQLite, we need to provide the migration directory
-		migrationDir := filepath.Join(config.DataDir, "migrations")
-		sqliteStore, err := store.NewSQLiteStore(config.DBPath, migrationDir)
+		// For SQLite, pass empty migration directory to skip migrations
+		// The SQLite store will create tables directly if no migrations are specified
+		sqliteStore, err := store.NewSQLiteStore(config.DBPath, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create SQLite store: %w", err)
 		}
@@ -206,6 +207,7 @@ func createGRPCServer(config *Config, storeInstance store.Store, tlsConfig *tls.
 	authConfig := server.AuthServiceConfig{
 		Store:           storeInstance,
 		JWTSecret:       []byte(config.JWTSecret),
+		KDFParams:       crypto.DefaultKDFParams(),
 		TokenLifetime:   config.JWTExpiration,
 		RefreshLifetime: config.JWTExpiration * 2,
 	}

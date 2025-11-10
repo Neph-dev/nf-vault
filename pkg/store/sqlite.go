@@ -78,7 +78,8 @@ func configureSQLite(db *sql.DB) error {
 // runMigrations applies database migrations.
 func (s *SQLiteStore) runMigrations() error {
 	if s.migrationDir == "" {
-		return nil // Skip migrations if no directory specified
+		// If no migration directory is specified, create tables directly
+		return s.createTables()
 	}
 
 	driver, err := sqlite3.WithInstance(s.db, &sqlite3.Config{})
@@ -98,6 +99,73 @@ func (s *SQLiteStore) runMigrations() error {
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
+}
+
+// createTables creates the database schema directly (used when no migrations are provided)
+func (s *SQLiteStore) createTables() error {
+	schemas := []string{
+		// Secrets table
+		`CREATE TABLE IF NOT EXISTS secrets (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL UNIQUE,
+			encrypted_key BLOB NOT NULL,
+			encrypted_data BLOB NOT NULL,
+			scope TEXT NOT NULL DEFAULT 'user',
+			category TEXT NOT NULL DEFAULT '',
+			tags TEXT NOT NULL DEFAULT '[]',
+			expiry_date DATETIME,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			version INTEGER NOT NULL DEFAULT 1,
+			metadata TEXT NOT NULL DEFAULT '{}'
+		)`,
+		
+		// Devices table
+		`CREATE TABLE IF NOT EXISTS devices (
+			id TEXT PRIMARY KEY,
+			user_id TEXT NOT NULL,
+			device_name TEXT NOT NULL,
+			public_key BLOB NOT NULL,
+			is_active BOOLEAN NOT NULL DEFAULT TRUE,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_used_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			metadata TEXT NOT NULL DEFAULT '{}'
+		)`,
+		
+		// Audit logs table
+		`CREATE TABLE IF NOT EXISTS audit_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			secret_id TEXT,
+			operation TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			device_id TEXT NOT NULL,
+			client_ip TEXT,
+			user_agent TEXT,
+			operation_details TEXT NOT NULL DEFAULT '{}',
+			success BOOLEAN NOT NULL,
+			error_message TEXT,
+			timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			session_id TEXT
+		)`,
+		
+		// Indexes for better performance
+		`CREATE INDEX IF NOT EXISTS idx_secrets_name ON secrets(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_secrets_category ON secrets(category)`,
+		`CREATE INDEX IF NOT EXISTS idx_secrets_created_at ON secrets(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_active ON devices(is_active)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_user_id ON audit_logs(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_operation ON audit_logs(operation)`,
+	}
+
+	for _, schema := range schemas {
+		if _, err := s.db.Exec(schema); err != nil {
+			return fmt.Errorf("failed to create table/index: %w", err)
+		}
 	}
 
 	return nil
