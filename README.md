@@ -7,7 +7,7 @@ A secure, local secret management tool designed for system administrators. nfvau
 nfvault uses a **local-only, admin-privilege security model**:
 
 - **Admin Access Control**: Only users with local administrator privileges can access the vault
-- **Local Storage**: All secrets are stored locally in an SQLite database (`~/.nef-vault/vault.db`)
+- **Local Storage**: All secrets are stored locally in an SQLite database (`~/.nf-vault/vault.db`)
 - **No Network Dependencies**: Operates entirely offline - no remote servers or network connections required
 - **Simplified Security**: No master passwords or complex encryption - relies on OS-level admin controls
 
@@ -31,8 +31,8 @@ nfvault uses a **local-only, admin-privilege security model**:
 ### Build from Source
 
 ```bash
-git clone https://github.com/Neph-dev/nef-vault.git
-cd nef-vault
+git clone https://github.com/Neph-dev/nf-vault.git
+cd nf-vault
 go build -o nfvault ./cmd/cli
 ```
 
@@ -253,8 +253,8 @@ nfvault completion fish > ~/.config/fish/completions/nfvault.fish
 
 ## 📁 File Locations
 
-- **Database**: `~/.nef-vault/vault.db` - SQLite database containing all secrets
-- **Logs**: `~/.nef-vault/logs/` - Application logs (if enabled)
+- **Database**: `~/.nf-vault/vault.db` - SQLite database containing all secrets
+- **Logs**: `~/.nf-vault/logs/` - Application logs (if enabled)
 
 ## ⚙️ Configuration
 
@@ -269,7 +269,7 @@ Currently, nfvault doesn't use environment variables for configuration, maintain
 ### Project Structure
 
 ```
-nef-vault/
+nf-vault/
 ├── cmd/
 │   ├── cli/           # CLI application code
 │   └── server/        # Server code (legacy, not used in local mode)
@@ -292,7 +292,7 @@ nef-vault/
 go build -o nfvault ./cmd/cli
 
 # Build server (legacy)
-go build -o nef-vault-server ./cmd/server
+go build -o nf-vault-server ./cmd/server
 
 # Build both
 make build
@@ -331,7 +331,7 @@ nfvault requires local administrator privileges to access secrets. This means:
 
 ### Best Practices
 
-1. **Backup**: Regularly backup your `~/.nef-vault/vault.db` file
+1. **Backup**: Regularly backup your `~/.nf-vault/vault.db` file
 2. **File Permissions**: Ensure the vault directory has restricted permissions
 3. **System Security**: Keep your operating system and security patches up to date
 4. **Access Control**: Only grant admin privileges to trusted users
@@ -360,10 +360,10 @@ nfvault secret get "550e8400-e29b-41d4-a716-446655440000"
 **Database access issues:**
 ```bash
 # Check if vault directory exists and is accessible
-ls -la ~/.nef-vault/
+ls -la ~/.nf-vault/
 
 # Verify database file permissions
-ls -la ~/.nef-vault/vault.db
+ls -la ~/.nf-vault/vault.db
 ```
 
 ### Debug Mode
@@ -376,7 +376,7 @@ nfvault secret list --verbose
 
 ### Log Files
 
-Check application logs in `~/.nef-vault/logs/` for detailed error information.
+Check application logs in `~/.nf-vault/logs/` for detailed error information.
 
 ## 🤝 Contributing
 
@@ -389,8 +389,8 @@ Check application logs in `~/.nef-vault/logs/` for detailed error information.
 ### Development Setup
 
 ```bash
-git clone https://github.com/Neph-dev/nef-vault.git
-cd nef-vault
+git clone https://github.com/Neph-dev/nf-vault.git
+cd nf-vault
 go mod download
 go build ./cmd/cli
 ./nfvault --help
